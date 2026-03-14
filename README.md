@@ -17,5 +17,5 @@ ping
 
 ## Usage
 
-chmod +x rapid-nano-transfer.sh
-./rapid-nano-transfer.sh
+chmod +x Rapid-Nano
+./Rapid-Nano
