@@ -1,0 +1,149 @@
+#!/bin/bash
+
+cat << "EOF"
+
+   _____             _     _ _   _              ___
+  |  __ \           (_)   | | \ | |            / _ \
+  | |__) |__ _ _ __  _  __| |  \| | __ _ _ __ | | | |
+  |  _  // _` | '_ \| |/ _` | . ` |/ _` | '_ \| | | |
+  | | \ | (_| | |_) | | (_| | |\  | (_| | | | | |_| |
+  |_|  \_\__,_| .__/|_|\__,_|_| \_|\__,_|_| |_|\___/
+              | |
+              |_|
+
+  Rapid-Nan0 Automated File Transfer Tool
+  Author: Abdulrhman-Nan0
+  Version: 1.0
+
+EOF
+
+
+read -p "Enter remote server IP:" ip_input
+
+if [ -z "$ip_input" ]; then
+echo "Error: You must enter a valid IP or hostname."
+exit 1
+fi
+
+echo "Checking connection to $ip_input ..."
+ping -c 2 $ip_input > /dev/null 2>&1
+
+if [ $? -ne 0 ]; then
+echo "Connection failed."
+exit 1
+fi
+
+echo "Connection successful."
+
+read -p "Enter source directory:" SOURCE_DIR
+
+read -p "Enter destination directory on remote server:" TARGET_DIR
+
+read -p "Enter remote username:" USERNAME
+
+TARGET_SERVER="$USERNAME@$ip_input"
+
+LOG_FILE="/var/log/mashro3_logs.log"
+
+echo "Checking SSH key..."
+
+if [ ! -f ~/.ssh/id_rsa ]; then
+echo "SSH key not found. Creating one..."
+ssh-keygen -t rsa
+fi
+
+echo "Copying SSH key to remote server..."
+ssh-copy-id $TARGET_SERVER
+
+echo "Choose transfer schedule:"
+echo "1) Daily"
+echo "2) Weekly"
+echo "3) Monthly"
+read SCHEDULE
+
+read -p "Enter hour (0-23):" TARGET_HOUR
+
+read -p "Enter minute (0-59):" TARGET_MIN
+echo "Waiting till the desired time..."
+if [ "$SCHEDULE" == "2" ]; then
+echo "Enter day of week (0-6) Sunday=0:"
+read TARGET_DAY
+fi
+
+if [ "$SCHEDULE" == "3" ]; then
+echo "Enter day of month (1-31):"
+read TARGET_MONTH_DAY
+fi
+
+LAST_EXECUTION_MINUTE=""
+
+while true
+do
+
+CURRENT_HOUR=$(date +%H)
+CURRENT_MIN=$(date +%M)
+CURRENT_DAY_WEEK=$(date +%w)
+CURRENT_DAY_MONTH=$(date +%d)
+
+RUN=false
+
+if [ "$SCHEDULE" == "1" ]; then
+if [ "$CURRENT_HOUR" -eq "$TARGET_HOUR" ] && [ "$CURRENT_MIN" -eq "$TARGET_MIN" ]; then
+RUN=true
+fi
+fi
+
+if [ "$SCHEDULE" == "2" ]; then
+if [ "$CURRENT_DAY_WEEK" -eq "$TARGET_DAY" ] && [ "$CURRENT_HOUR" -eq "$TARGET_HOUR" ] && [ "$CURRENT_MIN" -eq "$TARGET_MIN" ]; then
+RUN=true
+fi
+fi
+
+if [ "$SCHEDULE" == "3" ]; then
+if [ "$CURRENT_DAY_MONTH" -eq "$TARGET_MONTH_DAY" ] && [ "$CURRENT_HOUR" -eq "$TARGET_HOUR" ] && [ "$CURRENT_MIN" -eq "$TARGET_MIN" ]; then
+RUN=true
+fi
+fi
+
+
+if [ "$RUN" = true ] && [ "$LAST_EXECUTION_MINUTE" != "$CURRENT_MIN" ]; then
+
+LAST_EXECUTION_MINUTE=$CURRENT_MIN
+
+DATE=$(date +%Y-%m-%d_%H-%M-%S)
+ARCHIVE_NAME="backup_$DATE.tar.gz"
+
+echo "[$DATE] Starting backup process" >> "$LOG_FILE"
+
+tar -czf "/tmp/$ARCHIVE_NAME" -C "$SOURCE_DIR" .
+
+echo "[$DATE] Archive created" >> "$LOG_FILE"
+
+scp "/tmp/$ARCHIVE_NAME" "$TARGET_SERVER:$TARGET_DIR"
+
+if [ $? -eq 0 ]; then
+
+echo "[$DATE] Transfer successful" >> "$LOG_FILE"
+
+rm "/tmp/$ARCHIVE_NAME"
+
+rm -rf "$SOURCE_DIR"/*
+
+echo "[$DATE] Source cleaned" >> "$LOG_FILE"
+
+else
+
+echo "[$DATE] Transfer failed" >> "$LOG_FILE"
+exit 1
+
+fi
+
+sleep 61
+
+else
+
+sleep 30
+
+fi
+
+done
