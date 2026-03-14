@@ -1,2 +1,21 @@
-# Rapid-Nan0
-a bash script automated tool on which you can With confidence and security make a backup from a primary sever to a database server
+# Rapid-Nan0 Automated File Transfer
+
+Automated secure file transfer tool written in Bash.
+
+## Features
+- Compress files automatically
+- Transfer via SCP
+- SSH key authentication
+- Daily / Weekly / Monthly scheduling
+
+## Requirements
+Linux
+ssh
+scp
+tar
+ping
+
+## Usage
+
+chmod +x rapid-nano-transfer.sh
+./rapid-nano-transfer.sh
